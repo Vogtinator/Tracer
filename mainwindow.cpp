@@ -57,7 +57,9 @@ void MainWindow::connectionStatusChanged(bool connected)
         ui->actionVerbinden->setText("Disconnect");
         ui->statusBar->showMessage("Connected");
 
-        skype.callSkype("NAME Tracer");
+        if(skype.callSkype("NAME Tracer") != "OK")
+            skype.disconnect();
+
         skype.callSkype("PROTOCOL 8");
     }
     else
