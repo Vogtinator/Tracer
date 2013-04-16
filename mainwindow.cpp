@@ -1,9 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "skype.h"
 
 #include <iostream>
-#include <QtDBus/QDBusConnection>
-#include <QtDBus/QDBusMessage>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -11,20 +10,23 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     connectionStatusChanged(false);
-    connect(&this->skype, SIGNAL(connectionStatusChanged(bool)), this, SLOT(connectionStatusChanged(bool)));
-    connect(&this->skype, SIGNAL(receivedReply(QString)), this, SLOT(received(QString)));
-    connect(&this->skype, SIGNAL(receivedMessage(QString)), this, SLOT(receivedMessage(QString)));
+
+    skype = Skype::getSkype("Tracer");
+
+    connect(this->skype, SIGNAL(connectionStatusChanged(bool)), this, SLOT(connectionStatusChanged(bool)));
+    connect(this->skype, SIGNAL(receivedReply(QString)), this, SLOT(received(QString)));
+    connect(this->skype, SIGNAL(receivedMessage(QString)), this, SLOT(receivedMessage(QString)));
 }
 
 void MainWindow::callSkype()
 {
-    skype.callSkypeAsync(ui->lineEdit->text());
+    skype->callSkypeAsync(ui->lineEdit->text());
     ui->lineEdit->setReadOnly(true);
 }
 
 MainWindow::~MainWindow()
 {
-    skype.disconnect();
+    delete skype;
     delete ui;
 }
 
@@ -45,9 +47,9 @@ void MainWindow::receivedMessage(QString res)
 void MainWindow::connectToSkype()
 {
     if(ui->actionVerbinden->text() == "Disconnect")
-        skype.disconnect();
+        skype->disconnect();
     else
-        skype.connect();
+        skype->connect();
 }
 
 void MainWindow::connectionStatusChanged(bool connected)
@@ -57,14 +59,17 @@ void MainWindow::connectionStatusChanged(bool connected)
         ui->actionVerbinden->setText("Disconnect");
         ui->statusBar->showMessage("Connected");
 
-        if(skype.callSkype("NAME Tracer") != "OK")
-            skype.disconnect();
+        /*if(skype->callSkype("NAME Tracer") != "OK")
+            skype->disconnect();
 
-        skype.callSkype("PROTOCOL 8");
+        skype->callSkype("PROTOCOL 8");*/
+
+        ui->lineEdit->setReadOnly(false);
     }
     else
     {
         ui->actionVerbinden->setText("Connect");
         ui->statusBar->showMessage("Not connected");
+        ui->lineEdit->setReadOnly(true);
     }
 }

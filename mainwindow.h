@@ -2,8 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QtDBus/QDBusMessage>
-#include <QtDBus/QDBusInterface>
 
 #include "ui_mainwindow.h"
 #include "skype.h"
@@ -26,7 +24,7 @@ public slots:
     void receivedMessage(QString res);
     void connectionStatusChanged(bool connected);
 private:
-    Skype skype;
+    Skype *skype;
     Ui::MainWindow *ui;
 };
 

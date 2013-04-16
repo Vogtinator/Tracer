@@ -1,49 +1,36 @@
 #ifndef SKYPE_H
 #define SKYPE_H
 
-#include <QtDBus/QDBusMessage>
-#include <QtDBus/QDBusInterface>
-#include <QtDBus/QDBusAbstractAdaptor>
+#include <QtGlobal>
+#include <QObject>
+#include <QString>
 
 class MainWindow;
-class Skype;
-
-class SkypeClient : public QDBusAbstractAdaptor
-{
-    Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "com.Skype.API.Client")
-public:
-    SkypeClient(Skype *parent);
-public slots:
-    Q_NOREPLY void Notify(QString msg);
-private:
-    Skype *parent;
-};
 
 class Skype : public QObject
 {
-    friend class MainWindow;
     Q_OBJECT
 public:
-    Skype();
-    bool connect();
-    void disconnect();
-    QString callSkype(QString cmd);
-    bool callSkypeAsync(QString cmd);
+    static Skype* getSkype(QString name);
+    virtual bool connect() = 0;
+    virtual void disconnect() = 0;
+    virtual QString callSkype(QString cmd) = 0;
+    virtual bool callSkypeAsync(QString cmd) = 0;
 signals:
     void receivedReply(QString);
     void receivedMessage(QString);
     void error(QString);
     void connectionStatusChanged(bool);
-public slots:
-    void serviceUnregistered(QString name);
-    void _receivedReply(QDBusMessage msg);
-    void _receivedMessage(QString msg);
-private:
+protected:
     bool connected;
-    QDBusInterface *interface;
-    QDBusConnection connection;
-    SkypeClient *client;
 };
+
+#ifdef Q_OS_WIN
+#include "skype_win.h"
+#elif defined(Q_OS_UNIX)
+#include "skype_linux.h"
+#else
+#error "Platform not supported!"
+#endif
 
 #endif // SKYPE_H
