@@ -16,11 +16,13 @@ public:
     bool connect();
     void disconnect();
     QString callSkype(QString cmd);
-    bool callSkypeAsync(QString cmd);
+    int callSkypeAsync(QString cmd);
     bool nativeEventFilter(const QByteArray & eventType, void * message, long * result);
 private:
+    void sendCmd(QString cmd);
     unsigned int skypecontrolapiattach;
     unsigned int skypecontrolapidiscover;
+    QMap<int, QPair<QString, QEventLoop*>*> queue;
     HHOOK msgHook;
     HWND skypewnd;
     static LRESULT CALLBACK _receivedMessage(int nCode, WPARAM wParam, LPARAM lParam);

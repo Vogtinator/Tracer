@@ -2,8 +2,6 @@
 #include "ui_mainwindow.h"
 #include "skype.h"
 
-#include <iostream>
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -14,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
     skype = Skype::getSkype("Tracer");
 
     connect(this->skype, SIGNAL(connectionStatusChanged(bool)), this, SLOT(connectionStatusChanged(bool)));
-    connect(this->skype, SIGNAL(receivedReply(QString)), this, SLOT(received(QString)));
+    connect(this->skype, SIGNAL(receivedReply(QString, int)), this, SLOT(received(QString, int)));
     connect(this->skype, SIGNAL(receivedMessage(QString)), this, SLOT(receivedMessage(QString)));
 }
 
@@ -30,9 +28,9 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::received(QString res)
+void MainWindow::received(QString res, int)
 {
-    ui->plainTextEdit->appendPlainText(QString::fromStdString("> %1").arg(ui->lineEdit->text()));
+    ui->plainTextEdit->appendPlainText(QString("> %1").arg(ui->lineEdit->text()));
     ui->plainTextEdit->appendPlainText(res);
     if(!res.startsWith("ERROR"))
         ui->lineEdit->clear();
@@ -49,7 +47,10 @@ void MainWindow::connectToSkype()
     if(ui->actionVerbinden->text() == "Disconnect")
         skype->disconnect();
     else
-        skype->connect();
+    {
+        if(!skype->connect())
+           ui->plainTextEdit->appendPlainText("Failed to connect");
+    }
 }
 
 void MainWindow::connectionStatusChanged(bool connected)
@@ -59,10 +60,10 @@ void MainWindow::connectionStatusChanged(bool connected)
         ui->actionVerbinden->setText("Disconnect");
         ui->statusBar->showMessage("Connected");
 
-        /*if(skype->callSkype("NAME Tracer") != "OK")
+        if(skype->callSkype("NAME Tracer") != "OK")
             skype->disconnect();
 
-        skype->callSkype("PROTOCOL 8");*/
+        skype->callSkype("PROTOCOL 8");
 
         ui->lineEdit->setReadOnly(false);
     }

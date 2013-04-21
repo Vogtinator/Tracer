@@ -45,25 +45,54 @@ void SkypeWin::disconnect()
     emit connectionStatusChanged(false);
 }
 
+
+void SkypeWin::sendCmd(QString cmd)
+{
+    COPYDATASTRUCT copydata;
+    copydata.dwData = 1;
+    copydata.lpData = (PVOID)cmd.toStdString().c_str();
+    copydata.cbData = strlen((char*)copydata.lpData)+1;
+
+    SendMessage(skypewnd, WM_COPYDATA, (WPARAM)QApplication::activeWindow()->winId(), (LPARAM)&copydata);
+}
+
 QString SkypeWin::callSkype(QString cmd)
 {
-    COPYDATASTRUCT oCopyData;
+    int id = reserveID();
 
-    oCopyData.dwData = 1;
-    oCopyData.lpData = (PVOID)cmd.toStdString().c_str();
-    oCopyData.cbData = strlen((char*)oCopyData.lpData)+1;
+    cmd.prepend(QString("#%1 ").arg(queue.count()));
 
-    SendMessage(skypewnd, WM_COPYDATA, (WPARAM)QApplication::activeWindow()->winId(), (LPARAM)&oCopyData);
+    QPair<QString, QEventLoop*> *value = new QPair();
 
-    return QString("");
+    value->first = nullptr;
+    value->second = new QEventLoop;
+
+    queue.insert(id, value);
+
+    sendCmd(cmd);
+
+    value->second->exec();
+
+    QString reply = value->first;
+    queue.remove(id);
+    delete value;
+
+    freeID(id);
+
+    return reply;
 }
 
-bool SkypeWin::callSkypeAsync(QString cmd)
+int SkypeWin::callSkypeAsync(QString cmd)
 {
-    callSkype(cmd);
-    return false;
+    int id = reserveID();
+
+    cmd.prepend(QString("#%1 ").arg(id));
+
+    sendCmd(cmd);
+
+    return id;
 }
-#include <iostream>
+
 bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, long *result)
 {
     Q_UNUSED(eventType);
@@ -76,14 +105,28 @@ bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, lon
     if(uiMessage == WM_COPYDATA && (HWND)wParam == skypewnd)
     {
         PCOPYDATASTRUCT poCopyData=(PCOPYDATASTRUCT)lParam;
-        const char* content = (const char*)poCopyData->lpData;
+        QString msg = QString.fromUtf8(poCopyData->lpData);
 
-        /*if(strstr(msg, "#CMdx") == msg)*/
-            emit receivedReply(QString::fromUtf8(content));
-        /*else
-            emit receivedMessage(QString::fromUtf8(msg));*/
+        if(msg.at(0) != '#')
+            emit receivedMessage(msg);
 
-        std::cout << content << " length: " << msg->hwnd << wParam << std::endl;
+        else
+        {
+            QRegExp rx("#(\\d+) (.*)");
+            rx.indexIn(msg);
+            int id = rx.cap(1).toInt();
+
+            if(!queue.contains(id))
+            {
+                emit receivedReply(rx.cap(2), id);
+                freeID(id);
+            }
+            else
+            {
+                queue.value(id)->first = rx.cap(2);
+                queue.value(id)->second->quit();
+            }
+        }
 
         *result = 1;
         return true;

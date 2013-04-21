@@ -32,14 +32,14 @@ public:
     bool connect();
     void disconnect();
     QString callSkype(QString cmd);
-    bool callSkypeAsync(QString cmd);
+    int callSkypeAsync(QString cmd);
 public slots:
     void serviceUnregistered(QString name);
     void _receivedReply(QDBusMessage msg);
     void _receivedMessage(QString msg);
 private:
-    QDBusInterface *interface;
     QDBusConnection connection;
+    QDBusInterface *interface;
     SkypeClient *client;
 };
 

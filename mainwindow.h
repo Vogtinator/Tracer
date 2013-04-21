@@ -20,7 +20,7 @@ public:
 public slots:
     void callSkype();
     void connectToSkype();
-    void received(QString res);
+    void received(QString res, int id);
     void receivedMessage(QString res);
     void connectionStatusChanged(bool connected);
 private:

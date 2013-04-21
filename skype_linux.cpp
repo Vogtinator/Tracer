@@ -2,7 +2,7 @@
 
 #include "skype.h"
 
-SkypeLinux::SkypeLinux(QString name) : connection(name)
+SkypeLinux::SkypeLinux(QString name) : connection(name), interface(0), client(0)
 {
     this->connection = QDBusConnection::connectToBus(QDBusConnection::SessionBus, name);
     QObject::connect(this->connection.interface(), SIGNAL(serviceUnregistered(QString)), this, SLOT(serviceUnregistered(QString)));
@@ -23,20 +23,24 @@ bool SkypeLinux::connect()
     this->interface = new QDBusInterface("com.Skype.API", "/com/Skype", "com.Skype.API", connection);
     connected = interface->isValid();
     if(!connected)
-        goto exit;
+        return false;
 
     connected = this->connection.registerObject("/com/Skype/Client", this);
 
-    exit:
-    emit connectionStatusChanged(connected);
+    if(!connected)
+        return false;
 
-    return connected;
+    emit connectionStatusChanged(true);
+    return true;
 }
 
 QString SkypeLinux::callSkype(QString cmd)
 {
     if(!connected)
+    {
+        emit error("Not connected!");
         return NULL;
+    }
 
     QDBusMessage reply = interface->call("Invoke", cmd);
     if(reply.type() == QDBusMessage::ErrorMessage)
@@ -45,14 +49,24 @@ QString SkypeLinux::callSkype(QString cmd)
         return reply.arguments().at(0).toString();
 }
 
-bool SkypeLinux::callSkypeAsync(QString cmd)
+int SkypeLinux::callSkypeAsync(QString cmd)
 {
     if(!connected)
-        return false;
+    {
+        emit error("Not connected!");
+        return -1;
+    }
+
+    int id = reserveID();
+
+    cmd.prepend(QString("#%1 ").arg(id));
 
     QList<QVariant> args;
     args.append(cmd);
-    return interface->callWithCallback("Invoke", args, this, SLOT(_receivedReply(QDBusMessage)));
+
+    interface->callWithCallback("Invoke", args, this, SLOT(_receivedReply(QDBusMessage)));
+
+    return id;
 }
 
 void SkypeLinux::serviceUnregistered(QString name)
@@ -60,17 +74,19 @@ void SkypeLinux::serviceUnregistered(QString name)
     if (name != "com.Skype.API")
         return;
 
-    if(connected)
-            emit connectionStatusChanged(false);
-
-    connected = false;
+    disconnect();
 }
 
 void SkypeLinux::disconnect()
 {
     connection.unregisterObject("/com/Skype/Client");
     if(connected)
-            emit connectionStatusChanged(false);
+        emit connectionStatusChanged(false);
+
+    if(this->client)
+        delete this->client;
+    if(this->interface)
+        delete this->interface;
 
     connected = false;
 }
@@ -78,9 +94,20 @@ void SkypeLinux::disconnect()
 void SkypeLinux::_receivedReply(QDBusMessage msg)
 {
     if(msg.type() != QDBusMessage::ReplyMessage)
+    {
         emit error(msg.errorMessage());
-    else
-        emit receivedReply(msg.arguments().at(0).toString());
+        return;
+    }
+
+    QString reply = msg.arguments().at(0).toString();
+    int id = 0;
+    QRegExp rx("#(\\d+) (.*)");
+    rx.indexIn(reply);
+    id = rx.cap(1).toInt();
+
+    freeID(id);
+
+    emit receivedReply(rx.cap(2), id);
 }
 
 void SkypeLinux::_receivedMessage(QString msg)
