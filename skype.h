@@ -5,13 +5,14 @@
 #include <QObject>
 #include <QString>
 #include <QMutex>
+#include <QMainWindow>
 
 class Skype : public QObject
 {
     Q_OBJECT
 public:
     /** Get a Skype instance depending on OS */
-    static Skype* getSkype(QString name);
+    static Skype* getSkype(QString name, QMainWindow* mw);
     Skype() : connected(false) {}
     virtual ~Skype(){}
     /** Connect, fires connectionStatusChanged.
@@ -26,6 +27,8 @@ public:
     virtual int callSkypeAsync(QString cmd) = 0;
     bool isConnected() { return connected; }
 signals:
+    /** Connect to these only with Qt::QueuedConnection
+     *  or you may get weird issues */
     void receivedReply(QString, int);
     void receivedMessage(QString);
     void error(QString);
@@ -33,9 +36,10 @@ signals:
 protected:
     int reserveID();
     void freeID(int id);
-    QList<int> cmd_ids;
+    void clearIDs();
     bool connected;
 private:
+    QList<int> cmd_ids;
     QMutex id_lock;
 };
 

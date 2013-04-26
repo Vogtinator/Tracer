@@ -10,7 +10,7 @@ enum {
     ATTACH_API_AVAILABLE=0x8001
 };
 
-SkypeWin::SkypeWin(QString name)
+SkypeWin::SkypeWin(QString name, int winID) : mewnd((HWND)winID)
 {
     Q_UNUSED(name);
 
@@ -37,45 +37,51 @@ SkypeWin::~SkypeWin()
 
 bool SkypeWin::connect()
 {
-    return SendMessageTimeout(HWND_BROADCAST, skypecontrolapidiscover, (WPARAM)QApplication::activeWindow()->winId(), 0, SMTO_ABORTIFHUNG, 1000, NULL);
+    return SendMessageTimeout(HWND_BROADCAST, skypecontrolapidiscover, (WPARAM)mewnd, 0, SMTO_ABORTIFHUNG, 1000, NULL);
 }
 
 void SkypeWin::disconnect()
 {
+    clearIDs();
     emit connectionStatusChanged(false);
 }
 
-
-void SkypeWin::sendCmd(QString cmd)
+int SkypeWin::sendCmd(QString cmd)
 {
     COPYDATASTRUCT copydata;
     copydata.dwData = 1;
     copydata.lpData = (PVOID)cmd.toStdString().c_str();
     copydata.cbData = strlen((char*)copydata.lpData)+1;
 
-    SendMessage(skypewnd, WM_COPYDATA, (WPARAM)QApplication::activeWindow()->winId(), (LPARAM)&copydata);
+    SendMessageTimeout(skypewnd, WM_COPYDATA, (WPARAM)mewnd, (LPARAM)&copydata, SMTO_ABORTIFHUNG, 1000, NULL);
+    return GetLastError();
 }
 
 QString SkypeWin::callSkype(QString cmd)
 {
+    if(!connected)
+        return 0;
+
     int id = reserveID();
 
-    cmd.prepend(QString("#%1 ").arg(queue.count()));
+    cmd.prepend(QString("#%1 ").arg(id));
 
-    QPair<QString, QEventLoop*> *value = new QPair();
+    QEventLoop *loop = new QEventLoop();
 
-    value->first = nullptr;
-    value->second = new QEventLoop;
+    loop->connect(this, SIGNAL(receivedInternalReply()), SLOT(quit()));
 
-    queue.insert(id, value);
+    queue.insert(id, 0);
 
-    sendCmd(cmd);
+    if(sendCmd(cmd))
+        return 0;
 
-    value->second->exec();
+    while(queue.value(id, 0) == 0)
+        loop->exec();
 
-    QString reply = value->first;
+    QString reply(*queue[id]);
+    delete loop;
+    delete queue[id];
     queue.remove(id);
-    delete value;
 
     freeID(id);
 
@@ -84,11 +90,15 @@ QString SkypeWin::callSkype(QString cmd)
 
 int SkypeWin::callSkypeAsync(QString cmd)
 {
+    if(!connected)
+        return -1;
+
     int id = reserveID();
 
     cmd.prepend(QString("#%1 ").arg(id));
 
-    sendCmd(cmd);
+    if(sendCmd(cmd))
+        return -1;
 
     return id;
 }
@@ -105,17 +115,16 @@ bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, lon
     if(uiMessage == WM_COPYDATA && (HWND)wParam == skypewnd)
     {
         PCOPYDATASTRUCT poCopyData=(PCOPYDATASTRUCT)lParam;
-        QString msg = QString.fromUtf8(poCopyData->lpData);
+        QString msg = QString::fromUtf8((const char*)poCopyData->lpData);
 
         if(msg.at(0) != '#')
-            emit receivedMessage(msg);
+             emit receivedMessage(msg);
 
         else
         {
             QRegExp rx("#(\\d+) (.*)");
             rx.indexIn(msg);
             int id = rx.cap(1).toInt();
-
             if(!queue.contains(id))
             {
                 emit receivedReply(rx.cap(2), id);
@@ -123,8 +132,9 @@ bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, lon
             }
             else
             {
-                queue.value(id)->first = rx.cap(2);
-                queue.value(id)->second->quit();
+                QString *ret = new QString(rx.cap(2));
+                queue[id] = ret;
+                emit receivedInternalReply();
             }
         }
 
@@ -137,18 +147,17 @@ bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, lon
         {
         case ATTACH_SUCCESS:
             skypewnd = (HWND)wParam;
-            emit connectionStatusChanged(true);
             connected = true;
+            if(result)
+                *result = 1;
+            emit connectionStatusChanged(true);
             break;
         case ATTACH_REFUSED:
         case ATTACH_NOT_AVAILABLE:
-            emit connectionStatusChanged(false);
             connected = false;
+            emit connectionStatusChanged(false);
             break;
-        default:
-            return true;
         }
-        *result = 1;
         return true;
     }
 

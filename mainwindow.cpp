@@ -1,3 +1,5 @@
+#include <QString>
+
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "skype.h"
@@ -9,11 +11,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     connectionStatusChanged(false);
 
-    skype = Skype::getSkype("Tracer");
+    skype = Skype::getSkype("Tracer", this);
 
-    connect(this->skype, SIGNAL(connectionStatusChanged(bool)), this, SLOT(connectionStatusChanged(bool)));
-    connect(this->skype, SIGNAL(receivedReply(QString, int)), this, SLOT(received(QString, int)));
-    connect(this->skype, SIGNAL(receivedMessage(QString)), this, SLOT(receivedMessage(QString)));
+    this->connect(this->skype, SIGNAL(connectionStatusChanged(bool)), SLOT(connectionStatusChanged(bool)), Qt::QueuedConnection);
+    this->connect(this->skype, SIGNAL(receivedReply(QString, int)), SLOT(received(QString, int)), Qt::QueuedConnection);
+    this->connect(this->skype, SIGNAL(receivedMessage(QString)), SLOT(receivedMessage(QString)), Qt::QueuedConnection);
 }
 
 void MainWindow::callSkype()
@@ -59,12 +61,6 @@ void MainWindow::connectionStatusChanged(bool connected)
     {
         ui->actionVerbinden->setText("Disconnect");
         ui->statusBar->showMessage("Connected");
-
-        if(skype->callSkype("NAME Tracer") != "OK")
-            skype->disconnect();
-
-        skype->callSkype("PROTOCOL 8");
-
         ui->lineEdit->setReadOnly(false);
     }
     else

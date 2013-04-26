@@ -19,17 +19,33 @@ bool SkypeLinux::connect()
     if(connected)
         return true;
 
+    bool c;
+
     this->client = new SkypeClient(this);
     this->interface = new QDBusInterface("com.Skype.API", "/com/Skype", "com.Skype.API", connection);
-    connected = interface->isValid();
-    if(!connected)
+    c = interface->isValid();
+    if(!c)
         return false;
 
-    connected = this->connection.registerObject("/com/Skype/Client", this);
+    c = this->connection.registerObject("/com/Skype/Client", this);
 
-    if(!connected)
+    if(!c)
+    {
+        delete this->client;
+        delete this->interface;
         return false;
+    }
 
+    if(callSkype(QString("NAME %1").arg(name)) != "OK")
+    {
+        connection.unregisterObject("/com/Skype/Client");
+        delete this->client;
+        delete this->interface;
+        return false;
+    }
+    callSkype("PROTOCOL 8");
+
+    connected = c;
     emit connectionStatusChanged(true);
     return true;
 }
@@ -79,6 +95,10 @@ void SkypeLinux::serviceUnregistered(QString name)
 
 void SkypeLinux::disconnect()
 {
+    if(!connected)
+        return;
+
+    clearIDs();
     connection.unregisterObject("/com/Skype/Client");
     if(connected)
         emit connectionStatusChanged(false);

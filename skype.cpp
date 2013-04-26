@@ -1,9 +1,11 @@
+#include <QMainWindow>
+
 #include "skype.h"
 
-Skype *Skype::getSkype(QString name)
+Skype *Skype::getSkype(QString name, QMainWindow* mw)
 {
 #ifdef Q_OS_WIN
-    return new SkypeWin(name);
+    return new SkypeWin(name, mw->winId());
 #elif defined(Q_OS_UNIX)
     return new SkypeLinux(name);
 #endif
@@ -34,6 +36,15 @@ void Skype::freeID(int id)
     id_lock.lock();
 
     cmd_ids.removeOne(id);
+
+    id_lock.unlock();
+}
+
+void Skype::clearIDs()
+{
+    id_lock.lock();
+
+    cmd_ids.clear();
 
     id_lock.unlock();
 }

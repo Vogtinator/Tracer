@@ -66,19 +66,11 @@
    </property>
   </widget>
   <action name="actionVerbinden">
-   <property name="icon">
-    <iconset>
-     <normaloff>/usr/lib64/qt4/demos/browser/data/loading.gif</normaloff>/usr/lib64/qt4/demos/browser/data/loading.gif</iconset>
-   </property>
    <property name="text">
     <string>Connect</string>
    </property>
   </action>
   <action name="actionBeenden">
-   <property name="icon">
-    <iconset>
-     <normaloff>/usr/lib64/qt4/demos/browser/data/closetab.png</normaloff>/usr/lib64/qt4/demos/browser/data/closetab.png</iconset>
-   </property>
    <property name="text">
     <string>Quit</string>
    </property>
