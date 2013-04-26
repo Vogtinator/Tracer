@@ -21,7 +21,6 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::callSkype()
 {
     skype->callSkypeAsync(ui->lineEdit->text());
-    ui->lineEdit->setReadOnly(true);
 }
 
 MainWindow::~MainWindow()
@@ -36,7 +35,6 @@ void MainWindow::received(QString res, int)
     ui->plainTextEdit->appendPlainText(res);
     if(!res.startsWith("ERROR"))
         ui->lineEdit->clear();
-    ui->lineEdit->setReadOnly(false);
 }
 
 void MainWindow::receivedMessage(QString res)
