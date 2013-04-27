@@ -39,6 +39,7 @@ public slots:
     void _receivedMessage(QString msg);
 private:
     QDBusConnection connection;
+    QString name;
     QDBusInterface *interface;
     SkypeClient *client;
 };

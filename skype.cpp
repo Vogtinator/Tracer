@@ -4,6 +4,7 @@
 
 Skype *Skype::getSkype(QString name, QMainWindow* mw)
 {
+    Q_UNUSED(mw);
 #ifdef Q_OS_WIN
     return new SkypeWin(name, mw->winId());
 #elif defined(Q_OS_UNIX)

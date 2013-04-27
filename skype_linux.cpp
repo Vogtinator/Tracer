@@ -1,8 +1,9 @@
 #include <QDBusConnectionInterface>
+#include <QDebug>
 
 #include "skype.h"
 
-SkypeLinux::SkypeLinux(QString name) : connection(name), interface(0), client(0)
+SkypeLinux::SkypeLinux(QString nname) : connection(nname), name(nname), interface(0), client(0)
 {
     this->connection = QDBusConnection::connectToBus(QDBusConnection::SessionBus, name);
     QObject::connect(this->connection.interface(), SIGNAL(serviceUnregistered(QString)), this, SLOT(serviceUnregistered(QString)));
@@ -36,16 +37,18 @@ bool SkypeLinux::connect()
         return false;
     }
 
+    connected = c;
+
     if(callSkype(QString("NAME %1").arg(name)) != "OK")
     {
         connection.unregisterObject("/com/Skype/Client");
         delete this->client;
         delete this->interface;
+        connected = false;
         return false;
     }
     callSkype("PROTOCOL 8");
 
-    connected = c;
     emit connectionStatusChanged(true);
     return true;
 }
