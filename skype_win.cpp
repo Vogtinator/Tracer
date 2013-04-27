@@ -1,4 +1,5 @@
 #include <QtWidgets>
+#include <QTimer>
 
 #include "skype_win.h"
 
@@ -37,11 +38,29 @@ SkypeWin::~SkypeWin()
 
 bool SkypeWin::connect()
 {
-    return SendMessageTimeout(HWND_BROADCAST, skypecontrolapidiscover, (WPARAM)mewnd, 0, SMTO_ABORTIFHUNG, 1000, NULL);
+    if(connected)
+        return;
+
+    QEventLoop *loop = new QEventLoop();
+
+    loop->connect(this, SIGNAL(connectionStatusChanged(bool)), SLOT(quit()));
+
+    int c = SendMessageTimeout(HWND_BROADCAST, skypecontrolapidiscover, (WPARAM)mewnd, 0, SMTO_ABORTIFHUNG, 1000, NULL);
+    if(!c)
+        return false;
+
+    loop->exec();
+
+    delete loop;
+
+    return connected;
 }
 
 void SkypeWin::disconnect()
 {
+    if(!connected)
+        return;
+
     clearIDs();
     emit connectionStatusChanged(false);
 }
@@ -67,21 +86,33 @@ QString SkypeWin::callSkype(QString cmd)
     cmd.prepend(QString("#%1 ").arg(id));
 
     QEventLoop *loop = new QEventLoop();
+    QTimer *timer = new QTimer(this);
 
     loop->connect(this, SIGNAL(receivedInternalReply()), SLOT(quit()));
+    loop->connect(timer, SIGNAL(timeout()), SLOT(quit()));
 
     queue.insert(id, 0);
 
     if(sendCmd(cmd))
         return 0;
 
-    while(queue.value(id, 0) == 0)
+    timer->start(2000);
+
+    while(timer->isActive() && queue.value(id, 0) == 0)
         loop->exec();
 
-    QString reply(*queue[id]);
+    timer->stop();
+    delete timer;
     delete loop;
-    delete queue[id];
-    queue.remove(id);
+
+    QString reply("");
+
+    if(queue[id])
+    {
+        QString reply(*queue[id]);
+        delete queue[id];
+        queue.remove(id);
+    }
 
     freeID(id);
 
