@@ -12,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connectionStatusChanged(false);
 
     skype = Skype::getSkype("Tracer", this);
+    skype->setDebugging(true);
 
     this->connect(this->skype, SIGNAL(connectionStatusChanged(bool)), SLOT(connectionStatusChanged(bool)), Qt::QueuedConnection);
     this->connect(this->skype, SIGNAL(receivedReply(QString, int)), SLOT(received(QString, int)), Qt::QueuedConnection);

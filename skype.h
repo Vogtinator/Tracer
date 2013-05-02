@@ -13,7 +13,7 @@ class Skype : public QObject
 public:
     /** Get a Skype instance depending on OS */
     static Skype* getSkype(QString name, QMainWindow* mw);
-    Skype() : connected(false) {}
+    Skype() : connected(false), debugMode(false) {}
     virtual ~Skype(){}
     /** Connect, fires connectionStatusChanged.
      *  @return true on success, false on failure */
@@ -26,6 +26,7 @@ public:
      *  @return id, which will be given to receivedReply */
     virtual int callSkypeAsync(QString cmd) = 0;
     bool isConnected() { return connected; }
+    void setDebugging(bool on) { debugMode = on; }
 signals:
     /** Connect to these only with Qt::QueuedConnection
      *  or you may get weird issues */
@@ -37,6 +38,7 @@ protected:
     void freeID(int id);
     void clearIDs();
     bool connected;
+    bool debugMode;
 private:
     QList<int> cmd_ids;
     QMutex id_lock;

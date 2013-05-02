@@ -1,3 +1,4 @@
+#include <QDebug>
 #include <QDBusConnectionInterface>
 
 #include "skype.h"
@@ -54,11 +55,19 @@ QString SkypeLinux::callSkype(QString cmd)
     if(!connected)
         return NULL;
 
+    if(debugMode)
+        qDebug() << ">" << cmd;
+
     QDBusMessage reply = interface->call("Invoke", cmd);
     if(reply.type() == QDBusMessage::ErrorMessage)
         return NULL;
     else
-        return reply.arguments().at(0).toString();
+    {
+        QString replyStr = reply.arguments().at(0).toString();
+        if(debugMode)
+            qDebug() << replyStr;
+        return replyStr;
+    }
 }
 
 int SkypeLinux::callSkypeAsync(QString cmd)
@@ -72,6 +81,9 @@ int SkypeLinux::callSkypeAsync(QString cmd)
 
     QList<QVariant> args;
     args.append(cmd);
+
+    if(debugMode)
+        qDebug() << ">" << cmd;
 
     interface->callWithCallback("Invoke", args, this, SLOT(_receivedReply(QDBusMessage)));
 
@@ -110,6 +122,10 @@ void SkypeLinux::_receivedReply(QDBusMessage msg)
     QString reply = msg.arguments().at(0).toString();
     int id = 0;
     QRegExp rx("#(\\d+) (.*)");
+
+    if(debugMode)
+        qDebug() << reply;
+
     rx.indexIn(reply);
     id = rx.cap(1).toInt();
 
@@ -120,6 +136,9 @@ void SkypeLinux::_receivedReply(QDBusMessage msg)
 
 void SkypeLinux::_receivedMessage(QString msg)
 {
+    if(debugMode)
+        qDebug() << msg;
+
     emit receivedMessage(msg);
 }
 
