@@ -5,7 +5,6 @@
 #include <QDBusInterface>
 #include <QDBusMessage>
 
-#include "mainwindow.h"
 #include "skype.h"
 
 class SkypeLinux;
@@ -24,7 +23,6 @@ private:
 
 class SkypeLinux : public Skype
 {
-    friend class MainWindow;
     Q_OBJECT
 public:
     SkypeLinux(QString name);

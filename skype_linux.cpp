@@ -1,5 +1,4 @@
 #include <QDBusConnectionInterface>
-#include <QDebug>
 
 #include "skype.h"
 
