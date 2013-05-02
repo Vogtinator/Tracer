@@ -31,7 +31,6 @@ signals:
      *  or you may get weird issues */
     void receivedReply(QString, int);
     void receivedMessage(QString);
-    void error(QString);
     void connectionStatusChanged(bool);
 protected:
     int reserveID();

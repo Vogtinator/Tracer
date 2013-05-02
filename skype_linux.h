@@ -39,9 +39,9 @@ public slots:
     void _receivedMessage(QString msg);
 private:
     QDBusConnection connection;
-    QString name;
+    const QString name;
     QDBusInterface *interface;
-    SkypeClient *client;
+    const SkypeClient client;
 };
 
 #endif // SKYPE_LINUX_H

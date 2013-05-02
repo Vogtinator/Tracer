@@ -3,7 +3,7 @@
 
 #include "skype.h"
 
-SkypeLinux::SkypeLinux(QString nname) : connection(nname), name(nname), interface(0), client(0)
+SkypeLinux::SkypeLinux(QString nname) : connection(nname), name(nname), interface(0), client(this)
 {
     this->connection = QDBusConnection::connectToBus(QDBusConnection::SessionBus, name);
     QObject::connect(this->connection.interface(), SIGNAL(serviceUnregistered(QString)), this, SLOT(serviceUnregistered(QString)));
@@ -22,7 +22,6 @@ bool SkypeLinux::connect()
 
     bool c;
 
-    this->client = new SkypeClient(this);
     this->interface = new QDBusInterface("com.Skype.API", "/com/Skype", "com.Skype.API", connection);
     c = interface->isValid();
     if(!c)
@@ -32,7 +31,6 @@ bool SkypeLinux::connect()
 
     if(!c)
     {
-        delete this->client;
         delete this->interface;
         return false;
     }
@@ -42,7 +40,6 @@ bool SkypeLinux::connect()
     if(callSkype(QString("NAME %1").arg(name)) != "OK")
     {
         connection.unregisterObject("/com/Skype/Client");
-        delete this->client;
         delete this->interface;
         connected = false;
         return false;
@@ -56,10 +53,7 @@ bool SkypeLinux::connect()
 QString SkypeLinux::callSkype(QString cmd)
 {
     if(!connected)
-    {
-        emit error("Not connected!");
         return NULL;
-    }
 
     QDBusMessage reply = interface->call("Invoke", cmd);
     if(reply.type() == QDBusMessage::ErrorMessage)
@@ -71,10 +65,7 @@ QString SkypeLinux::callSkype(QString cmd)
 int SkypeLinux::callSkypeAsync(QString cmd)
 {
     if(!connected)
-    {
-        emit error("Not connected!");
         return -1;
-    }
 
     int id = reserveID();
 
@@ -106,8 +97,6 @@ void SkypeLinux::disconnect()
     if(connected)
         emit connectionStatusChanged(false);
 
-    if(this->client)
-        delete this->client;
     if(this->interface)
         delete this->interface;
 
@@ -117,10 +106,7 @@ void SkypeLinux::disconnect()
 void SkypeLinux::_receivedReply(QDBusMessage msg)
 {
     if(msg.type() != QDBusMessage::ReplyMessage)
-    {
-        emit error(msg.errorMessage());
         return;
-    }
 
     QString reply = msg.arguments().at(0).toString();
     int id = 0;
