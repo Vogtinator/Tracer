@@ -1,3 +1,4 @@
+#include <QDebug>
 #include <QtWidgets>
 #include <QTimer>
 
@@ -39,7 +40,7 @@ SkypeWin::~SkypeWin()
 bool SkypeWin::connect()
 {
     if(connected)
-        return;
+        return false;
 
     QEventLoop *loop = new QEventLoop();
 
@@ -62,6 +63,7 @@ void SkypeWin::disconnect()
         return;
 
     clearIDs();
+    connected = false;
     emit connectionStatusChanged(false);
 }
 
@@ -73,6 +75,9 @@ int SkypeWin::sendCmd(QString cmd)
     copydata.cbData = strlen((char*)copydata.lpData)+1;
 
     SendMessageTimeout(skypewnd, WM_COPYDATA, (WPARAM)mewnd, (LPARAM)&copydata, SMTO_ABORTIFHUNG, 1000, NULL);
+    if(debugMode)
+        qDebug() << ">" << cmd;
+
     return GetLastError();
 }
 
@@ -98,18 +103,18 @@ QString SkypeWin::callSkype(QString cmd)
 
     timer->start(2000);
 
-    while(timer->isActive() && queue.value(id, 0) == 0)
+    while(timer->isActive() && queue.value(id) == 0)
         loop->exec();
 
     timer->stop();
     delete timer;
     delete loop;
 
-    QString reply("");
+    QString reply;
 
     if(queue[id])
     {
-        QString reply(*queue[id]);
+        reply = *queue[id];
         delete queue[id];
         queue.remove(id);
     }
@@ -147,6 +152,9 @@ bool SkypeWin::nativeEventFilter(const QByteArray &eventType, void *message, lon
     {
         PCOPYDATASTRUCT poCopyData=(PCOPYDATASTRUCT)lParam;
         QString msg = QString::fromUtf8((const char*)poCopyData->lpData);
+
+        if(debugMode)
+            qDebug() << msg;
 
         if(msg.at(0) != '#')
              emit receivedMessage(msg);

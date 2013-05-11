@@ -21,8 +21,10 @@ public:
     QString callSkype(QString cmd);
     int callSkypeAsync(QString cmd);
     bool nativeEventFilter(const QByteArray & eventType, void * message, long * result);
+
 signals:
     void receivedInternalReply();
+
 private:
     int sendCmd(QString cmd);
     unsigned int skypecontrolapiattach;
